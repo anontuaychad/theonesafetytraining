@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-
+import { io } from "socket.io-client";
 export default function App() {
-
+const socket = io("https://theonesafetytraining.onrender.com");
   const [screen, setScreen] = useState("lobby");
 
   const [playerName, setPlayerName] = useState("");
