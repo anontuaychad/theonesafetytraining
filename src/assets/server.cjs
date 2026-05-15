@@ -15,47 +15,52 @@ const io = new Server(server, {
   },
 });
 
-let players = [];
-let leaderboard = [];
+const rooms = {};
+
+function generatePin() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 io.on("connection", (socket) => {
-  console.log("Player connected:", socket.id);
+  console.log("USER CONNECTED");
 
-  socket.on("join-game", (playerName) => {
-    const player = {
-      id: socket.id,
-      name: playerName,
-      score: 0,
+  socket.on("create_room", () => {
+    const pin = generatePin();
+
+    rooms[pin] = {
+      host: socket.id,
+      players: [],
+      scores: {},
     };
 
-    players.push(player);
+    socket.join(pin);
 
-    io.emit("players-update", players);
+    socket.emit("room_created", pin);
+
+    console.log("ROOM CREATED:", pin);
   });
 
-  socket.on("answer-question", ({ playerId, points }) => {
-    players = players.map((p) => {
-      if (p.id === playerId) {
-        return {
-          ...p,
-          score: p.score + points,
-        };
-      }
+  socket.on("join_room", ({ pin, name }) => {
+    if (!rooms[pin]) {
+      socket.emit("room_not_found");
+      return;
+    }
 
-      return p;
+    socket.join(pin);
+
+    rooms[pin].players.push({
+      id: socket.id,
+      name,
+      score: 0,
     });
 
-    leaderboard = [...players].sort((a, b) => b.score - a.score);
+    io.to(pin).emit("players_update", rooms[pin].players);
 
-    io.emit("leaderboard-update", leaderboard);
+    console.log(name, "JOINED", pin);
   });
 
   socket.on("disconnect", () => {
-    players = players.filter((p) => p.id !== socket.id);
-
-    io.emit("players-update", players);
-
-    console.log("Disconnected:", socket.id);
+    console.log("USER DISCONNECTED");
   });
 });
 
